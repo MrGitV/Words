@@ -105,7 +105,7 @@ class Program
         } while (playAgain != "да" && playAgain != "нет" && playAgain != "yes" && playAgain != "no");
     }
 
-     // Проверка корректности слова
+    // Проверка корректности слова
     static bool IsWordValid(string word) =>
         word.GroupBy(c => c).All(g => originalWord!.Count(c => c == g.Key) >= g.Count());
 }
