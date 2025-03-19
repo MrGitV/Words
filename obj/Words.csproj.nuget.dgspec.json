@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Hometask\\.Net C#\\Words\\Words\\Words.csproj": {}
+    "D:\\Hometask\\.Net-C#\\Words\\Words\\Words.csproj": {}
   },
   "projects": {
-    "D:\\Hometask\\.Net C#\\Words\\Words\\Words.csproj": {
+    "D:\\Hometask\\.Net-C#\\Words\\Words\\Words.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Hometask\\.Net C#\\Words\\Words\\Words.csproj",
+        "projectUniqueName": "D:\\Hometask\\.Net-C#\\Words\\Words\\Words.csproj",
         "projectName": "Words",
-        "projectPath": "D:\\Hometask\\.Net C#\\Words\\Words\\Words.csproj",
+        "projectPath": "D:\\Hometask\\.Net-C#\\Words\\Words\\Words.csproj",
         "packagesPath": "C:\\Users\\Vladimir\\.nuget\\packages\\",
-        "outputPath": "D:\\Hometask\\.Net C#\\Words\\Words\\obj\\",
+        "outputPath": "D:\\Hometask\\.Net-C#\\Words\\Words\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Vladimir\\AppData\\Roaming\\NuGet\\NuGet.Config",
