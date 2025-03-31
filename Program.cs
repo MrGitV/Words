@@ -1,55 +1,90 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-
-class Program
+﻿class Program
 {
-    // Начальное слово, заданное игроком
-    static string? originalWord;
+    // Game configuration constants
+    private static class GameSettings
+    {
+        public const int DefaultTimeLeft = 15;
+        public const int TimerInterval = 1000;
+        public const int MinWordLength = 8;
+        public const int MaxWordLength = 30;
+    }
 
-    // Список использованных слов
-    static readonly List<string> usedWords = [];
-
-    // Таймер для отсчёта времени хода
-    static Timer? timer;
-
-    // Переменные для контроля состояния игры
-    static bool timeIsUp;
-    static int timeLeft = 15;
-    static int currentPlayer = 1;
-    static string? language;
-    static string? playAgain;
+    // Game state variables
+    private static string originalWord = null!;
+    private static readonly List<string> usedWords = [];
+    private static Timer timer = null!;
+    private static bool timeIsUp;
+    private static int timeLeft = GameSettings.DefaultTimeLeft;
+    private static int currentPlayer = 1;
+    private static string language = null!;
+    private static string playAgain = null!;
+    internal static readonly string[] sourceArray = ["да", "нет", "yes", "no"];
 
     static void Main()
     {
-        // Выбор языка
-        do
-        {
-            Console.WriteLine("Выберите язык / Choose language (ru/en):");
-            language = Console.ReadLine()?.ToLower();
-        } while (language != "ru" && language != "en");
-
+        SelectLanguage();
         StartGame();
     }
 
-    static void StartGame()
+    // Handles language selection process
+    private static void SelectLanguage()
     {
-        // Запрос начального слова
         do
         {
-            Console.WriteLine(language == "ru" ? "Введите исходное слово (8-30 символов):" : "Enter the original word (8-30 characters):");
-            originalWord = Console.ReadLine()?.ToLower();
-        } while (string.IsNullOrEmpty(originalWord) || originalWord.Length is < 8 or > 30 || !originalWord.All(char.IsLetter));
+            Console.WriteLine("Выберите язык / Choose language (ru/en):");
+            language = Console.ReadLine()?.ToLower() ?? "";
+        } while (language != "ru" && language != "en");
+    }
 
-        // Инициализация переменных
+    // Initializes game state and starts main game loop
+    private static void StartGame()
+    {
+        InitializeGame();
+        SetupTimer();
+        GameLoop();
+        HandleGameEnd();
+    }
+
+    // Sets up initial game state and prompts for original word
+    private static void InitializeGame()
+    {
+        originalWord = GetValidOriginalWord(language);
+        ResetGameState();
+    }
+
+    // Prompts user for valid original word until correct input is received
+    private static string GetValidOriginalWord(string language)
+    {
+        string? word;
+        do
+        {
+            Console.WriteLine(LocalizationManager.GetMessage("EnterOriginalWord", language));
+            word = Console.ReadLine()?.ToLower();
+        } while (!IsOriginalWordValid(word));
+
+        return word!;
+    }
+
+    // Validates original word against length and character requirements
+    private static bool IsOriginalWordValid(string? word) =>
+        !string.IsNullOrEmpty(word) &&
+        word.Length >= GameSettings.MinWordLength &&
+        word.Length <= GameSettings.MaxWordLength &&
+        word.All(char.IsLetter);
+
+    // Resets game state variables to initial values
+    private static void ResetGameState()
+    {
         usedWords.Clear();
         usedWords.Add(originalWord);
         timeIsUp = false;
-        timeLeft = 15;
+        timeLeft = GameSettings.DefaultTimeLeft;
         currentPlayer = 1;
+    }
 
-        // Запуск таймера
+    // Configures and starts the game timer
+    private static void SetupTimer()
+    {
         timer = new Timer(_ =>
         {
             if (--timeLeft <= 0)
@@ -57,55 +92,123 @@ class Program
                 timeIsUp = true;
                 timer?.Dispose();
             }
-        }, null, 1000, 1000);
-
-        // Основной цикл игры
-        while (!timeIsUp)
-        {
-            Console.WriteLine(language == "ru"
-                ? $"Игрок {currentPlayer}, введите слово (осталось {timeLeft} секунд):"
-                : $"Player {currentPlayer}, enter a word ({timeLeft} seconds left):");
-            var input = Console.ReadLine()?.ToLower();
-
-            // Проверка, не истекло ли время перед обработкой ввода
-            if (timeIsUp)
-            {
-                break;
-            }
-
-            // Проверка введённого слова
-            if (string.IsNullOrEmpty(input) || !IsWordValid(input) || usedWords.Contains(input))
-            {
-                Console.WriteLine(language == "ru"
-                    ? "Неверное слово. Повторите попытку."
-                    : "Invalid word. Try again.");
-                continue;
-            }
-
-            usedWords.Add(input);               // Добавление слова в список использованных
-            currentPlayer = 3 - currentPlayer;  // Смена игрока
-            timeLeft = 15;                      // Сброс времени
-        }
-
-        // Окончание игры
-        Console.WriteLine(language == "ru"
-            ? $"Время вышло! Игрок {currentPlayer} проиграл."
-            : $"Time's up! Player {currentPlayer} loses.");
-        timer?.Dispose();
-
-        // Запрос на повтор игры
-        do
-        {
-            Console.WriteLine(language == "ru" ? "Хотите сыграть еще раз? (да/нет)" : "Do you want to play again? (yes/no)");
-            playAgain = Console.ReadLine()?.ToLower();
-            if (playAgain == "да" || playAgain == "yes")
-            {
-                StartGame();
-            }
-        } while (playAgain != "да" && playAgain != "нет" && playAgain != "yes" && playAgain != "no");
+        }, null, GameSettings.TimerInterval, GameSettings.TimerInterval);
     }
 
-    // Проверка корректности слова
-    static bool IsWordValid(string word) =>
-        word.GroupBy(c => c).All(g => originalWord!.Count(c => c == g.Key) >= g.Count());
+    // Main game loop handling player input and game logic
+    private static void GameLoop()
+    {
+        while (!timeIsUp)
+        {
+            PromptCurrentPlayer();
+            var input = Console.ReadLine()?.ToLower();
+
+            if (timeIsUp) break;
+
+            if (IsInputValid(input))
+            {
+                ProcessValidInput(input!);
+            }
+        }
+    }
+
+    // Displays current player prompt with time remaining
+    private static void PromptCurrentPlayer()
+    {
+        Console.WriteLine(LocalizationManager.GetMessage("PlayerPrompt", language)
+            .Replace("{player}", currentPlayer.ToString())
+            .Replace("{time}", timeLeft.ToString()));
+    }
+
+    // Validates player input against game rules
+    private static bool IsInputValid(string? input) =>
+        !string.IsNullOrEmpty(input) &&
+        IsWordValid(input) &&
+        !usedWords.Contains(input);
+
+    // Processes valid player input and updates game state
+    private static void ProcessValidInput(string input)
+    {
+        usedWords.Add(input);
+        currentPlayer = 3 - currentPlayer;
+        timeLeft = GameSettings.DefaultTimeLeft;
+    }
+
+    // Handles game end sequence and restart logic
+    private static void HandleGameEnd()
+    {
+        timer?.Dispose();
+        DisplayGameResult();
+        HandleRestartPrompt();
+    }
+
+    // Displays game over message with losing player
+    private static void DisplayGameResult()
+    {
+        Console.WriteLine(LocalizationManager.GetMessage("TimeUp", language)
+            .Replace("{player}", currentPlayer.ToString()));
+    }
+
+    // Handles restart prompt and either restarts game or exits
+    private static void HandleRestartPrompt()
+    {
+        do
+        {
+            Console.WriteLine(LocalizationManager.GetMessage("PlayAgain", language));
+            playAgain = Console.ReadLine()?.ToLower() ?? "";
+        } while (!IsValidRestartResponse(playAgain));
+
+        if (playAgain == "да" || playAgain == "yes")
+        {
+            StartGame();
+        }
+    }
+
+    // Validates restart prompt response
+    private static bool IsValidRestartResponse(string response) => sourceArray.Contains(response);
+
+    // Validates if player's word can be formed from original word
+    private static bool IsWordValid(string? word) =>
+        !string.IsNullOrEmpty(word) &&
+        word.GroupBy(c => c).All(g =>
+            originalWord.Count(c => c == g.Key) >= g.Count());
+}
+
+// Provides localized messages for different game components
+static class LocalizationManager
+{
+    private static readonly Dictionary<string, Dictionary<string, string>> _translations = new()
+    {
+        {
+            "ru", new Dictionary<string, string>
+            {
+                {"EnterOriginalWord", "Введите исходное слово (8-30 символов):"},
+                {"PlayerPrompt", "Игрок {player}, введите слово (осталось {time} секунд):"},
+                {"InvalidWord", "Неверное слово. Повторите попытку."},
+                {"TimeUp", "Время вышло! Игрок {player} проиграл."},
+                {"PlayAgain", "Хотите сыграть еще раз? (да/нет)"}
+            }
+        },
+        {
+            "en", new Dictionary<string, string>
+            {
+                {"EnterOriginalWord", "Enter the original word (8-30 characters):"},
+                {"PlayerPrompt", "Player {player}, enter a word ({time} seconds left):"},
+                {"InvalidWord", "Invalid word. Try again."},
+                {"TimeUp", "Time's up! Player {player} loses."},
+                {"PlayAgain", "Do you want to play again? (yes/no)"}
+            }
+        }
+    };
+
+    // Retrieves localized message for specified key and language
+    public static string GetMessage(string key, string language)
+    {
+        if (_translations.TryGetValue(language, out var languageDict) &&
+            languageDict.TryGetValue(key, out var message))
+        {
+            return message;
+        }
+        return string.Empty;
+    }
 }
